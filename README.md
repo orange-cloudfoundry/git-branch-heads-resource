@@ -16,7 +16,7 @@ Add the following `resource_types` entry to your pipeline:
 resource_types:
 - name: git-branch-heads
   type: docker-image
-  source: {repository: vito/git-branch-heads-resource}
+  source: {repository: orangecloudfoundry/git-branch-heads-resource}
 ```
 
 ## Source Configuration
