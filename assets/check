@@ -46,7 +46,8 @@ echo "$current_heads" |
     if [ "$ref" != "$prev_ref" ]; then
       echo "$branch"
     fi
-  done |
+  done | head -n 1 |
   jq -R . |
   jq -s 'map({changed: .} + $branches)' \
-    --argjson branches "$current_heads_map" >&3
+    --argjson branches "$current_heads_map" |
+  jq '.[]| [{changed: .changed, (.changed): .[.changed]}]' >&3
