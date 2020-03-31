@@ -49,7 +49,7 @@ else
   paths_search=$(echo "-- $paths $ignore_paths" | tr "\n\r" " ")
 fi
 
-last_commits_on_path=$(git rev-list --all --first-parent $paths_search)
+last_commits_on_path=$(git rev-list --all --first-parent $paths_search | git rev-list --stdin --grep="\\[ci\\sskip\\]" --grep="\\[skip\\sci\\]" --invert-grep --first-parent --no-walk)
 current_filtered_heads=$(
 echo "$current_heads" |
   while read head commit; do
