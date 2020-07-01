@@ -19,7 +19,8 @@ jq \
   }' < $payload |
   ${GIT_RESOURCE_IN:-/opt/git-resource/in} "$@" |
   jq --slurpfile payload $payload \
-    '. + {version: ($payload | .[0].version)}'
+    '. + {version: ($payload | .[0].version)}' |
+  jq '.version.changed as $branch | {version: {changed: $branch, ($branch): .version[$branch]}, metadata: .metadata}'
 
 cd "$@"
 mkdir .git/git-branch-heads-resource

@@ -20,23 +20,57 @@ uri=$(jq -r '.source.uri // ""' < $payload)
 exclude_branches=$(jq -r '.source.exclude // ""' < $payload)
 branch_filter=$(jq -r '.source.branches // [] | join(" ")' < $payload)
 git_config_payload=$(jq -r '.source.git_config // []' < $payload)
+paths="$(jq -r '(.source.paths // ["."])[]' < $payload)" # those "'s are important
+ignore_paths="$(jq -r '":!" + (.source.ignore_paths // [])[]' < $payload)" # these ones too
 
 previous_branches="$(jq -r '.version.branches // ""' < $payload)"
 
 configure_git_global "${git_config_payload}"
 
+
+# Download repo so we can do rev-list after
+
+destination=$TMPDIR/git-resource-repo-cache
+if [ -d $destination ]; then
+  cd $destination
+  git fetch -f
+  git reset --quiet --hard FETCH_HEAD
+else
+  git clone $uri $destination
+  cd $destination
+fi
+
 e_point=!
 current_heads=$(git ls-remote -h "$uri" $branch_filter | sed 's/refs\/heads\///' | awk '{print $2, $1}' | awk "\$1 $e_point~ \"^($exclude_branches)$\"" | sort -V)
+
+if [ "$paths" = "." ] && [ -z "$ignore_paths" ]; then
+  paths_search=""
+else
+  paths_search=$(echo "-- $paths $ignore_paths" | tr "\n\r" " ")
+fi
+
+last_commits_on_path=$(git rev-list --all --first-parent $paths_search | git rev-list --stdin --grep="\\[ci\\sskip\\]" --grep="\\[skip\\sci\\]" --invert-grep --first-parent --no-walk)
+current_filtered_heads=$(
+echo "$current_heads" |
+  while read head commit; do
+    echo "$last_commits_on_path" |
+      while read com; do
+        if [[ "$com" = "$commit" ]]; then
+          echo "$head $commit"
+        fi
+      done;
+    done
+  )
 
 current_heads_map=$(
   jq -n '
     $heads | rtrimstr("\n") | split("\n") |
       map(split(" ") | {key: .[0], value: .[1]}) |
       from_entries
-  ' --arg heads "$current_heads"
+  ' --arg heads "$current_filtered_heads"
 )
 
-echo "$current_heads" |
+echo "$current_filtered_heads" |
   while read branch ref; do
     if [ -z "$branch" ]; then
       continue

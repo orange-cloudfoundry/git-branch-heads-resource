@@ -1,4 +1,4 @@
-FROM concourse/git-resource
+FROM concourse/git-resource:1.6.2
 
 ENV LC_ALL C
 RUN apk add --update coreutils
